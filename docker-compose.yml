@@ -1,0 +1,11 @@
+version: '2.2'
+services:
+    haproxy:
+      image: haproxy:2.8-bullseye
+      restart: always
+      container_name: haproxy-rke2
+      user: root
+      volumes:
+        - ./data:/usr/local/etc/haproxy:ro
+        - /etc/localtime:/etc/localtime:ro
+      network_mode: "host"

@@ -1,0 +1,93 @@
+#---------------------------------------------------------------------
+global
+    log         127.0.0.1 local2
+    ulimit-n    65536
+    pidfile     /var/run/haproxy.pid
+    maxconn     4000
+    user        haproxy
+    group       haproxy
+    daemon
+
+defaults
+    mode                    http
+    log                     global
+    option                  httplog
+    option                  dontlognull
+    option http-server-close
+    option forwardfor       except 127.0.0.0/8
+    option                  redispatch
+    retries                 3
+    timeout http-request    10s
+    timeout queue           1m
+    timeout connect         10s
+    timeout client          1m
+    timeout server          1m
+    timeout http-keep-alive 10s
+    timeout check           10s
+    maxconn                 10240
+
+#---------------------------------------------------------------------
+# main frontend which proxys to the backends
+#---------------------------------------------------------------------
+listen stats
+    mode http
+    bind *:7000
+    stats enable
+    stats uri /
+    stats auth admin:oEz1EGCq1pkWnLOm
+
+frontend kubernetes
+    bind *:6443
+    option tcplog
+    mode tcp
+    default_backend kubernetes-master-nodes
+frontend http_front
+    mode http
+    bind *:80
+    default_backend http_back
+frontend https_front
+    mode http
+    bind *:443
+    default_backend https_back
+frontend rke2
+    mode tcp
+    bind *:9345
+    balance roundrobin
+    default_backend rke2_server
+
+frontend node-port
+    bind *:31080
+    option tcplog
+    mode tcp
+    default_backend node-port-test
+    
+backend kubernetes-master-nodes
+    mode tcp
+    balance roundrobin
+    option tcp-check
+    server master-1 192.168.2.104:6443 check fall 3 rise 2
+    #server master-2 192.168.2.105:6443 check fall 3 rise 2
+    #server master-3 192.168.2.106:6443  check fall 3 rise 2
+backend http_back
+    mode http
+    server master-1 192.168.2.104:6443 check fall 3 rise 2
+    server master-2 192.168.2.105:6443 check fall 3 rise 2
+    server master-3 192.168.2.106:6443  check fall 3 rise 2
+backend https_back
+    mode http
+    server master-1 192.168.2.104:6443 check fall 3 rise 2
+    server master-2 192.168.2.105:6443 check fall 3 rise 2
+    server master-3 192.168.2.106:6443  check fall 3 rise 2
+backend rke2_server
+    mode tcp
+    server master-1 192.168.2.104:9345 check fall 3 rise 2
+    server master-2 192.168.2.105:9345 check fall 3 rise 2
+    server master-3 192.168.2.106:9345  check fall 3 rise 2
+
+backend node-port-test
+    mode http
+    balance roundrobin
+    option tcp-check
+    server master-1 192.168.2.192:31080 check fall 3 rise 2
+    server master-2 192.168.2.193:31080 check fall 3 rise 2
+
