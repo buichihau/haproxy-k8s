@@ -115,3 +115,52 @@ vrrp_instance VI_2 {
   }
 }
 ```
+
+### Start keepalived
+```
+systemctl start keepalived
+```
+
+### Check trên node 1
+
+```
+ip addr sh
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+2: ens192: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+    link/ether 00:50:56:8f:bb:6c brd ff:ff:ff:ff:ff:ff
+    inet 192.168.2.146/23 brd 192.168.3.255 scope global noprefixroute ens192
+       valid_lft forever preferred_lft forever
+    inet 192.168.2.148/32 scope global ens192
+       valid_lft forever preferred_lft forever
+3: ens224: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+    link/ether 00:50:56:8f:92:cd brd ff:ff:ff:ff:ff:ff
+    inet 103.29.26.146/24 brd 103.29.26.255 scope global noprefixroute ens224
+       valid_lft forever preferred_lft forever
+    inet 103.29.26.148/32 scope global ens224
+       valid_lft forever preferred_lft forever
+4: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default
+    link/ether 02:42:55:36:ae:c7 brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
+       valid_lft forever preferred_lft forever
+```
+
+
+### Giải thích:
+* priority 100: set node1 làm MASTER
+* priority 99: set node2 làm BACKUP
+* script "killall -0 haproxy": Kiểm tra dịch vụ HAProxy còn hoạt động trên node hay không, nếu không VIP sẽ tự động nhảy sang node còn lại.
+* Khai báo vrrp_script: 
+```
+vrrp_script chk_haproxy {
+script "killall -0 haproxy"           #check pid của dịch vụ haproxy có tồn tại hay không
+interval 2                                     #thời gian lặp lại đoạn script đơn vị là second
+weight 2                                      #trọng số khấu trừ priority 2
+}
+track_script {
+  chk_haproxy                             #khai báo tên đoạn script 
+  }
+
+```
